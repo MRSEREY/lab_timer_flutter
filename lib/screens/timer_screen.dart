@@ -3,6 +3,7 @@ import 'package:lap_timer/widgets/bottom_card_container.dart';
 import 'package:lap_timer/widgets/main_action_button.dart';
 import 'package:timer_count_down/timer_controller.dart';
 import 'package:timer_count_down/timer_count_down.dart';
+import 'package:text_to_speech/text_to_speech.dart';
 
 class TimerScreen extends StatefulWidget {
   final int numberOfLaps;
@@ -24,14 +25,17 @@ class _TimerScreenState extends State<TimerScreen> {
   int durationForDisplay = 0;
   bool isShowRestDuration = true;
   bool isPause = false;
+  TextToSpeech tts = TextToSpeech();
+  bool isFinished = false;
 
   final CountdownController _controller = CountdownController(autoStart: true);
 
   @override
-  void didChangeDependencies() {
+  void didChangeDependencies() async {
     setState(() {
       durationForDisplay = widget.durationPerLap;
     });
+    await tts.speak('Lap 1');
     super.didChangeDependencies();
   }
 
@@ -101,13 +105,14 @@ class _TimerScreenState extends State<TimerScreen> {
                     );
                   },
                   interval: const Duration(milliseconds: 1000),
-                  onFinished: () {
+                  onFinished: () async {
                     if (widget.numberOfLaps > 1 && startingLap < widget.numberOfLaps && isShowRestDuration) {
                       setState(() {
                         durationForDisplay = widget.restDuration;
                         isShowRestDuration = false;
                       });
                       _controller.restart();
+                      await tts.speak('Enjoy your ${widget.restDuration} seconds rest');
                     } else if (startingLap < widget.numberOfLaps) {
                       setState(() {
                         startingLap += 1;
@@ -115,11 +120,14 @@ class _TimerScreenState extends State<TimerScreen> {
                         isShowRestDuration = true;
                       });
                       _controller.restart();
+                      await tts.speak('Lap $startingLap');
                     } else {
                       setState(() {
                         durationForDisplay = 0;
                         _controller.pause();
+                        isFinished = true;
                       });
+                      await tts.speak('Finished');
                     }
                   },
                 ),
@@ -133,16 +141,32 @@ class _TimerScreenState extends State<TimerScreen> {
           children: [
             Expanded(
               child: MainActionButton(
-                title: isPause ? "RESUME" : "PAUSE",
+                title: isFinished
+                    ? "RESTART"
+                    : isPause
+                        ? "RESUME"
+                        : "PAUSE",
                 textColor: Colors.white,
-                onPressed: () {
-                  setState(() {
-                    isPause = !isPause;
-                  });
-                  if (!isPause) {
-                    _controller.resume();
+                onPressed: () async {
+                  if (isFinished) {
+                    setState(() {
+                      durationForDisplay = widget.durationPerLap;
+                      isFinished = false;
+                      startingLap = 1;
+                      isShowRestDuration = true;
+                    });
+                    tts.speak("Lap 1");
+                    await Future.delayed(const Duration(milliseconds: 100));
+                    _controller.restart();
                   } else {
-                    _controller.pause();
+                    setState(() {
+                      isPause = !isPause;
+                    });
+                    if (!isPause) {
+                      _controller.resume();
+                    } else {
+                      _controller.pause();
+                    }
                   }
                 },
               ),

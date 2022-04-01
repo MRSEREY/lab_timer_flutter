@@ -18,7 +18,17 @@ class MyApp extends StatelessWidget {
       themeMode: ThemeMode.light,
       darkTheme: AppTheme.dark,
       theme: AppTheme.light,
+      builder: (context, child) => GestureDetector(
+        onTap: () {
+          hideKeyboard(context);
+        },
+        child: child,
+      ),
       home: const HomeScreen(),
     );
+  }
+
+  void hideKeyboard(BuildContext context) {
+    FocusManager.instance.primaryFocus?.unfocus();
   }
 }
